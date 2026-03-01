@@ -37,6 +37,8 @@ export class GameScene extends Phaser.Scene {
 
   create(data: GameSceneData): void {
     this.currentSeed = data.seed;
+    this.currentZoomIndex = DEFAULT_ZOOM_INDEX;
+    this.isDragging = false;
 
     // Generate world
     const worldData = WorldGenerator.generate(data.seed);
@@ -67,6 +69,7 @@ export class GameScene extends Phaser.Scene {
     if (data.isNewGame) {
       const startPos = this.findStartPosition(worldData.terrain);
       camera.centerOn(startPos.x, startPos.y);
+      camera.setZoom(ZOOM_LEVELS[this.currentZoomIndex]);
     } else if (data.saveData) {
       camera.scrollX = data.saveData.cameraX;
       camera.scrollY = data.saveData.cameraY;
@@ -147,7 +150,10 @@ export class GameScene extends Phaser.Scene {
     // Escape
     keyboard.on('keydown-ESC', () => this.handleEscape());
 
-    // Launch HUD
+    // Launch HUD (stop first in case it's still running from a previous session)
+    if (this.scene.isActive('hud')) {
+      this.scene.stop('hud');
+    }
     this.scene.launch('hud', { timeSystem: this.timeSystem, gameScene: this });
   }
 

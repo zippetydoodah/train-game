@@ -30,8 +30,19 @@ export class HUDScene extends Phaser.Scene {
 
     // Listen for save menu open
     this.events.on('open-save-menu', () => this.openSaveMenu());
+    this.events.on('return-to-menu', () => this.returnToMainMenu());
     this.gameScene.events.on('save-requested', () => this.openSaveMenu());
     this.gameScene.events.on('escape-pressed', () => this.handleEscape());
+
+    // Clean up cross-scene listeners when this scene shuts down
+    this.events.on('shutdown', () => {
+      this.gameScene.events.off('save-requested');
+      this.gameScene.events.off('escape-pressed');
+      if (this.saveMenu) {
+        this.saveMenu.close();
+        this.saveMenu = null;
+      }
+    });
   }
 
   update(): void {
@@ -53,5 +64,14 @@ export class HUDScene extends Phaser.Scene {
       this.timeSystem.setForcePaused(false);
       this.saveMenu = null;
     }
+  }
+
+  private returnToMainMenu(): void {
+    if (this.saveMenu) {
+      this.saveMenu.close();
+      this.saveMenu = null;
+    }
+    this.scene.stop('hud');
+    this.scene.get('game').scene.start('main-menu');
   }
 }

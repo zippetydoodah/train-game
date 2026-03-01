@@ -28,7 +28,8 @@ export class BootScene extends Phaser.Scene {
 
   private generateBitmapFont(): void {
     const fontSize = 8;
-    const chars = Phaser.GameObjects.RetroFont.TEXT_SET1;
+    // TEXT_SET1 plus £ sign (U+00A3) for British Pounds Sterling
+    const chars = Phaser.GameObjects.RetroFont.TEXT_SET1 + '\u00A3';
     const charWidth = fontSize;
     const charHeight = fontSize;
     const cols = chars.length;

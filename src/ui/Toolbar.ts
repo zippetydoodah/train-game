@@ -44,6 +44,22 @@ export class Toolbar {
       btnX += def.width + 8;
     }
 
+    // Menu button (right-aligned, next to Save)
+    const menuWidth = 56;
+    const menuX = GAME_WIDTH - 12 - 56 - 8 - menuWidth;
+    const menuBtn = new Button(scene, {
+      x: menuX,
+      y: btnY,
+      width: menuWidth,
+      height: 28,
+      label: 'Menu',
+      state: ButtonState.Normal,
+      onClick: () => {
+        scene.events.emit('return-to-menu');
+      },
+    });
+    this.buttons.push(menuBtn);
+
     // Save button (right-aligned)
     const saveWidth = 56;
     const saveX = GAME_WIDTH - 12 - saveWidth;

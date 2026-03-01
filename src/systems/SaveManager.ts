@@ -13,14 +13,20 @@ export class SaveManager {
     }
   }
 
-  private static setStore(store: SaveStore): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  private static setStore(store: SaveStore): boolean {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      return true;
+    } catch {
+      // localStorage quota exceeded or unavailable
+      return false;
+    }
   }
 
-  static save(slotIndex: SlotIndex, data: SaveSlotData): void {
+  static save(slotIndex: SlotIndex, data: SaveSlotData): boolean {
     const store = this.getStore();
     store.slots[slotIndex] = data;
-    this.setStore(store);
+    return this.setStore(store);
   }
 
   static load(slotIndex: SlotIndex): SaveSlotData | null {

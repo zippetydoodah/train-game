@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { Panel } from './Panel';
 import { GAME_HEIGHT } from '../config/game-config';
 
