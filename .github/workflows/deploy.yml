@@ -1,12 +1,12 @@
 name: Deploy to GitHub Pages
 
 # --- Trigger ---
-# Runs only on pushes to the main branch.
-# Pull requests, other branches, and manual triggers are excluded.
+# Runs on pushes to the main branch or manual dispatch.
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 # --- Permissions ---
 # Required for the official GitHub Pages deployment actions.
@@ -32,9 +32,6 @@ jobs:
   # ===== Job 1: Build =====
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./train-game
     steps:
       # Step 1: Check out the repository
       - name: Checkout repository
@@ -46,27 +43,31 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: train-game/package-lock.json
+          cache-dependency-path: package-lock.json
 
       # Step 3: Install dependencies deterministically from the lockfile
       - name: Install dependencies
         run: npm ci
 
-      # Step 4: Run the full production build (tsc type-check + vite build)
+      # Step 4: Run ESLint to catch code quality issues before building
+      - name: Lint
+        run: npm run lint
+
+      # Step 5: Run the full production build (tsc type-check + vite build)
       # If tsc or vite exits non-zero, this step fails and the deploy job
       # is skipped entirely (fail-fast).
       - name: Build
         run: npm run build
 
-      # Step 5: Configure GitHub Pages (reads repo Pages settings)
+      # Step 6: Configure GitHub Pages (reads repo Pages settings)
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      # Step 6: Upload the dist/ directory as a Pages artifact
+      # Step 7: Upload the dist/ directory as a Pages artifact
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: train-game/dist
+          path: dist
 
   # ===== Job 2: Deploy =====
   # Runs only if the build job succeeds.
