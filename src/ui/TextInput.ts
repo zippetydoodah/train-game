@@ -6,6 +6,7 @@ export class TextInput {
   private bg: Phaser.GameObjects.Graphics;
   private displayText: Phaser.GameObjects.BitmapText;
   private hiddenInput: HTMLInputElement;
+  private hitArea: Phaser.GameObjects.Rectangle;
   private scene: Phaser.Scene;
   private focused: boolean = false;
   private x: number;
@@ -59,14 +60,19 @@ export class TextInput {
     });
 
     // Click on visual box focuses the hidden input
-    const hitArea = scene.add.rectangle(
+    this.hitArea = scene.add.rectangle(
       x + width / 2, y + height / 2, width, height
     );
-    hitArea.setOrigin(0.5, 0.5);
-    hitArea.setFillStyle(0x000000, 0);
-    hitArea.setInteractive({ useHandCursor: true });
-    hitArea.on('pointerdown', () => {
+    this.hitArea.setOrigin(0.5, 0.5);
+    this.hitArea.setFillStyle(0x000000, 0);
+    this.hitArea.setInteractive({ useHandCursor: true });
+    this.hitArea.on('pointerdown', () => {
       this.focus();
+    });
+
+    // Safety: remove HTML element if scene shuts down without explicit destroy
+    scene.events.once('shutdown', () => {
+      this.removeHiddenInput();
     });
   }
 
@@ -77,6 +83,12 @@ export class TextInput {
     const borderColor = focused ? UI.INPUT_FOCUS_BORDER : UI.INPUT_BORDER;
     this.bg.lineStyle(1, borderColor, 1);
     this.bg.strokeRect(this.x, this.y, this.width, this.height);
+  }
+
+  private removeHiddenInput(): void {
+    if (this.hiddenInput.parentNode) {
+      this.hiddenInput.parentNode.removeChild(this.hiddenInput);
+    }
   }
 
   getValue(): string {
@@ -90,8 +102,7 @@ export class TextInput {
   destroy(): void {
     this.bg.destroy();
     this.displayText.destroy();
-    if (this.hiddenInput.parentNode) {
-      this.hiddenInput.parentNode.removeChild(this.hiddenInput);
-    }
+    this.hitArea.destroy();
+    this.removeHiddenInput();
   }
 }

@@ -1,15 +1,32 @@
 import { SaveSlotData, SaveStore, SlotIndex, MAX_SAVE_SLOTS, STORAGE_KEY } from '../types/save';
 
+/** Default empty store factory. */
+function emptyStore(): SaveStore {
+  return { slots: [null, null, null, null, null] };
+}
+
 export class SaveManager {
   static getStore(): SaveStore {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { slots: [null, null, null, null, null] };
+    if (!raw) return emptyStore();
     try {
-      const parsed = JSON.parse(raw) as SaveStore;
-      while (parsed.slots.length < MAX_SAVE_SLOTS) parsed.slots.push(null);
-      return parsed;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.slots)) {
+        return emptyStore();
+      }
+      // Validate each slot and ensure exactly MAX_SAVE_SLOTS entries
+      const slots: (SaveSlotData | null)[] = [];
+      for (let i = 0; i < MAX_SAVE_SLOTS; i++) {
+        const slot = parsed.slots[i];
+        if (slot && typeof slot.name === 'string' && typeof slot.seed === 'number') {
+          slots.push(slot as SaveSlotData);
+        } else {
+          slots.push(null);
+        }
+      }
+      return { slots };
     } catch {
-      return { slots: [null, null, null, null, null] };
+      return emptyStore();
     }
   }
 

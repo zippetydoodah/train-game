@@ -58,8 +58,8 @@ export class ConfirmDialog {
       label: config.cancelLabel ?? 'Cancel',
       state: ButtonState.Normal,
       onClick: () => {
-        config.onCancel();
         this.destroy();
+        config.onCancel();
       },
     });
 
@@ -72,8 +72,8 @@ export class ConfirmDialog {
       state: ButtonState.Normal,
       isDanger: config.isDanger,
       onClick: () => {
-        config.onConfirm();
         this.destroy();
+        config.onConfirm();
       },
     });
   }

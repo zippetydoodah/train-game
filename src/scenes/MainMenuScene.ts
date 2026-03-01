@@ -6,7 +6,7 @@ import { SaveManager } from '../systems/SaveManager';
 import { TimeSystem } from '../systems/TimeSystem';
 import { UI, TEXT } from '../config/palette';
 import { ButtonState } from '../types/ui';
-import { SlotIndex, MAX_SAVE_SLOTS, SaveSlotData } from '../types/save';
+import { MAX_SAVE_SLOTS, SaveSlotData, asSlotIndex } from '../types/save';
 import { GAME_WIDTH } from '../config/game-config';
 
 export class MainMenuScene extends Phaser.Scene {
@@ -27,14 +27,14 @@ export class MainMenuScene extends Phaser.Scene {
     this.clearAll();
 
     // Title
-    const title = this.add.bitmapText(GAME_WIDTH / 2, 180, 'press-start', 'RAIL TYCOON', 8);
+    const title = this.add.bitmapText(GAME_WIDTH / 2, 140, 'press-start', 'RAIL TYCOON', 8);
     title.setScale(4);
     title.setOrigin(0.5, 0.5);
     title.setTint(TEXT.TITLE);
     this.texts.push(title);
 
     // Subtitle
-    const subtitle = this.add.bitmapText(GAME_WIDTH / 2, 230, 'press-start', 'World Foundation - Phase 1', 8);
+    const subtitle = this.add.bitmapText(GAME_WIDTH / 2, 190, 'press-start', 'World Foundation - Phase 1', 8);
     subtitle.setOrigin(0.5, 0.5);
     subtitle.setTint(TEXT.SECONDARY);
     this.texts.push(subtitle);
@@ -42,24 +42,45 @@ export class MainMenuScene extends Phaser.Scene {
     // New Game button
     const btnWidth = 380;
     const newGameX = (GAME_WIDTH - btnWidth) / 2;
-    const newGameY = 270;
+    const newGameY = 220;
     const newGameBtn = new Button(this, {
       x: newGameX,
       y: newGameY,
       width: btnWidth,
-      height: 48,
+      height: 40,
       label: 'NEW GAME',
       state: ButtonState.Normal,
       onClick: () => {
-        const seed = Date.now();
+        const seed = Date.now() & 0x7FFFFFFF; // Ensure positive 32-bit integer for PRNG
         this.scene.start('game', { seed, isNewGame: true });
       },
     });
     this.buttons.push(newGameBtn);
 
-    // Save slots
+    // Continue button — loads the most recently saved game
     const slots = SaveManager.getAllSlots();
-    const slotStartY = 340;
+    const mostRecent = this.getMostRecentSave(slots);
+    const continueState = mostRecent ? ButtonState.Normal : ButtonState.Disabled;
+    const continueY = newGameY + 48;
+    const continueBtn = new Button(this, {
+      x: newGameX,
+      y: continueY,
+      width: btnWidth,
+      height: 40,
+      label: 'CONTINUE',
+      state: continueState,
+      onClick: mostRecent ? () => {
+        this.scene.start('game', {
+          seed: mostRecent.seed,
+          isNewGame: false,
+          saveData: mostRecent,
+        });
+      } : undefined,
+    });
+    this.buttons.push(continueBtn);
+
+    // Save slots
+    const slotStartY = continueY + 56;
     const slotHeight = 56;
     const slotSpacing = 8;
 
@@ -78,7 +99,7 @@ export class MainMenuScene extends Phaser.Scene {
       if (slotData) {
         this.renderOccupiedSlot(newGameX, slotY, btnWidth, slotHeight, slotData, i);
       } else {
-        this.renderEmptySlot(newGameX, slotY, btnWidth, slotHeight);
+        this.renderEmptySlot(newGameX, slotY, btnWidth, slotHeight, i);
       }
     }
   }
@@ -88,8 +109,8 @@ export class MainMenuScene extends Phaser.Scene {
     width: number, height: number,
     slotData: SaveSlotData, index: number
   ): void {
-    // Name
-    const nameText = this.add.bitmapText(x + 12, y + 10, 'press-start', slotData.name, 8);
+    // Slot number + name
+    const nameText = this.add.bitmapText(x + 12, y + 10, 'press-start', `[${index + 1}] ${slotData.name}`, 8);
     nameText.setScale(1.1);
     nameText.setTint(TEXT.PRIMARY);
     this.texts.push(nameText);
@@ -134,7 +155,7 @@ export class MainMenuScene extends Phaser.Scene {
           confirmLabel: 'Delete',
           isDanger: true,
           onConfirm: () => {
-            SaveManager.delete(index as SlotIndex);
+            SaveManager.delete(asSlotIndex(index));
             this.confirmDialog = null;
             this.scene.restart();
           },
@@ -149,15 +170,31 @@ export class MainMenuScene extends Phaser.Scene {
 
   private renderEmptySlot(
     x: number, y: number,
-    width: number, height: number
+    width: number, height: number,
+    index: number
   ): void {
     const emptyText = this.add.bitmapText(
       x + width / 2, y + height / 2,
-      'press-start', 'Empty', 8
+      'press-start', `[${index + 1}] Empty`, 8
     );
     emptyText.setOrigin(0.5, 0.5);
     emptyText.setTint(TEXT.DISABLED);
     this.texts.push(emptyText);
+  }
+
+  private getMostRecentSave(slots: (SaveSlotData | null)[]): SaveSlotData | null {
+    let latest: SaveSlotData | null = null;
+    let latestTime = 0;
+    for (const slot of slots) {
+      if (slot) {
+        const time = new Date(slot.savedAt).getTime();
+        if (time > latestTime) {
+          latest = slot;
+          latestTime = time;
+        }
+      }
+    }
+    return latest;
   }
 
   private getGameDateString(slotData: SaveSlotData): string {

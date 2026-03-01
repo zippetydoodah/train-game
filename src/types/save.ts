@@ -20,3 +20,11 @@ export type SlotIndex = 0 | 1 | 2 | 3 | 4;
 export const MAX_SAVE_SLOTS = 5;
 export const MAX_SAVE_NAME_LENGTH = 24;
 export const STORAGE_KEY = 'railTycoon_saves';
+
+/** Runtime-checked SlotIndex factory — throws RangeError if out of bounds. */
+export function asSlotIndex(i: number): SlotIndex {
+  if (i < 0 || i >= MAX_SAVE_SLOTS) {
+    throw new RangeError(`Invalid slot index: ${i}`);
+  }
+  return i as SlotIndex;
+}

@@ -37,7 +37,11 @@ export class BootScene extends Phaser.Scene {
     const canvas = document.createElement('canvas');
     canvas.width = cols * charWidth;
     canvas.height = charHeight;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.error('Failed to get 2D canvas context for font generation');
+      return;
+    }
 
     // White text on transparent background
     ctx.fillStyle = '#ffffff';

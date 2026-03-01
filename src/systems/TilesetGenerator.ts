@@ -58,7 +58,10 @@ export class TilesetGenerator {
     const canvas = document.createElement('canvas');
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to get 2D canvas context for tileset generation');
+    }
 
     // --- 1. Draw 7 base tiles ------------------------------------------
     for (let t = 0; t < TERRAIN_TYPE_COUNT; t++) {

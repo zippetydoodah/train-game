@@ -7,7 +7,7 @@ import { SaveManager } from '../systems/SaveManager';
 import { GameScene } from '../scenes/GameScene';
 import { UI, TEXT } from '../config/palette';
 import { ButtonState } from '../types/ui';
-import { SlotIndex, MAX_SAVE_SLOTS } from '../types/save';
+import { MAX_SAVE_SLOTS, MAX_SAVE_NAME_LENGTH, asSlotIndex } from '../types/save';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/game-config';
 
 export class SaveMenu {
@@ -20,6 +20,7 @@ export class SaveMenu {
   private textInput: TextInput | null = null;
   private confirmDialog: ConfirmDialog | null = null;
   private savedFlash: Phaser.GameObjects.BitmapText | null = null;
+  private savedFlashTimer: Phaser.Time.TimerEvent | null = null;
   private scene: Phaser.Scene;
   private gameScene: GameScene;
   private onClose: () => void;
@@ -105,12 +106,17 @@ export class SaveMenu {
           label: 'Save',
           state: ButtonState.Normal,
           onClick: () => {
-            const name = input.getValue().trim() || `Save ${i + 1}`;
+            const rawName = input.getValue().trim() || `Save ${i + 1}`;
+            const name = rawName.slice(0, MAX_SAVE_NAME_LENGTH);
             const saveData = this.gameScene.collectSaveData(name);
-            SaveManager.save(i as SlotIndex, saveData);
-            this.activeSlotIndex = -1;
-            this.renderSlots(dx, (GAME_HEIGHT - 400) / 2, dialogWidth);
-            this.showSavedFlash();
+            const success = SaveManager.save(asSlotIndex(i), saveData);
+            if (success) {
+              this.activeSlotIndex = -1;
+              this.renderSlots(dx, (GAME_HEIGHT - 400) / 2, dialogWidth);
+              this.showFlash('Saved!', TEXT.SUCCESS);
+            } else {
+              this.showFlash('Save failed! Storage full.', TEXT.DANGER);
+            }
           },
         });
         this.slotButtons.push(saveBtn);
@@ -151,10 +157,14 @@ export class SaveMenu {
               isDanger: true,
               onConfirm: () => {
                 const saveDataNew = this.gameScene.collectSaveData(slotData.name);
-                SaveManager.save(i as SlotIndex, saveDataNew);
+                const success = SaveManager.save(asSlotIndex(i), saveDataNew);
                 this.confirmDialog = null;
-                this.renderSlots(dx, (GAME_HEIGHT - 400) / 2, dialogWidth);
-                this.showSavedFlash();
+                if (success) {
+                  this.renderSlots(dx, (GAME_HEIGHT - 400) / 2, dialogWidth);
+                  this.showFlash('Saved!', TEXT.SUCCESS);
+                } else {
+                  this.showFlash('Save failed! Storage full.', TEXT.DANGER);
+                }
               },
               onCancel: () => {
                 this.confirmDialog = null;
@@ -196,22 +206,28 @@ export class SaveMenu {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  private showSavedFlash(): void {
+  private showFlash(message: string, tint: number): void {
     if (this.savedFlash) this.savedFlash.destroy();
+    if (this.savedFlashTimer) {
+      this.savedFlashTimer.destroy();
+      this.savedFlashTimer = null;
+    }
 
     this.savedFlash = this.scene.add.bitmapText(
       GAME_WIDTH / 2, GAME_HEIGHT / 2 + 180,
-      'press-start', 'Saved!', 8
+      'press-start', message, 8
     );
     this.savedFlash.setOrigin(0.5, 0.5);
-    this.savedFlash.setScale(1.5);
-    this.savedFlash.setTint(TEXT.SUCCESS);
+    this.savedFlash.setScale(tint === TEXT.SUCCESS ? 1.5 : 1.0);
+    this.savedFlash.setTint(tint);
 
-    this.scene.time.delayedCall(1500, () => {
+    const duration = tint === TEXT.SUCCESS ? 1500 : 2500;
+    this.savedFlashTimer = this.scene.time.delayedCall(duration, () => {
       if (this.savedFlash) {
         this.savedFlash.destroy();
         this.savedFlash = null;
       }
+      this.savedFlashTimer = null;
     });
   }
 
@@ -227,6 +243,10 @@ export class SaveMenu {
     if (this.savedFlash) {
       this.savedFlash.destroy();
       this.savedFlash = null;
+    }
+    if (this.savedFlashTimer) {
+      this.savedFlashTimer.destroy();
+      this.savedFlashTimer = null;
     }
     for (const el of this.slotElements) el.destroy();
     for (const btn of this.slotButtons) btn.destroy();

@@ -17,6 +17,11 @@ export class AutoTiler {
     const diffNeighbor = AutoTiler.getPrimaryTransitionTarget(t, north, east, south, west);
     if (diffNeighbor === null) return t;
 
+    // Only generate transitions for adjacent terrain pairs (elevation diff of 1).
+    // Non-adjacent pairs have no transition tiles; fall back to the base tile.
+    const diff = Math.abs(t - diffNeighbor);
+    if (diff !== 1) return t;
+
     // Build the 4-bit cardinal bitmask for the chosen neighbour
     let mask = 0;
     if (north === diffNeighbor) mask |= 1;

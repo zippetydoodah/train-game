@@ -13,6 +13,8 @@ export class HUDScene extends Phaser.Scene {
   private saveMenu: SaveMenu | null = null;
   private timeSystem!: TimeSystem;
   private gameScene!: GameScene;
+  private onSaveRequested!: () => void;
+  private onEscapePressed!: () => void;
 
   constructor() {
     super({ key: 'hud' });
@@ -31,13 +33,17 @@ export class HUDScene extends Phaser.Scene {
     // Listen for save menu open
     this.events.on('open-save-menu', () => this.openSaveMenu());
     this.events.on('return-to-menu', () => this.returnToMainMenu());
-    this.gameScene.events.on('save-requested', () => this.openSaveMenu());
-    this.gameScene.events.on('escape-pressed', () => this.handleEscape());
+
+    // Store bound handler references for surgical removal on shutdown
+    this.onSaveRequested = () => this.openSaveMenu();
+    this.onEscapePressed = () => this.handleEscape();
+    this.gameScene.events.on('save-requested', this.onSaveRequested);
+    this.gameScene.events.on('escape-pressed', this.onEscapePressed);
 
     // Clean up cross-scene listeners when this scene shuts down
     this.events.on('shutdown', () => {
-      this.gameScene.events.off('save-requested');
-      this.gameScene.events.off('escape-pressed');
+      this.gameScene.events.off('save-requested', this.onSaveRequested);
+      this.gameScene.events.off('escape-pressed', this.onEscapePressed);
       if (this.saveMenu) {
         this.saveMenu.close();
         this.saveMenu = null;
@@ -67,6 +73,7 @@ export class HUDScene extends Phaser.Scene {
   }
 
   private returnToMainMenu(): void {
+    this.timeSystem.setForcePaused(true);
     if (this.saveMenu) {
       this.saveMenu.close();
       this.saveMenu = null;
