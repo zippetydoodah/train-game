@@ -12,6 +12,11 @@ export class CostCalculator {
     const stationTier = STATION_TIERS.find(t => t.type === type);
     if (stationTier) return stationTier.cost;
 
+    // Bridge: flat cost per tile, no terrain multiplier (FR-COST-3)
+    if (type === InfrastructureType.Bridge) {
+      return BASE_COSTS.get(type) ?? 200;
+    }
+
     const baseCost = BASE_COSTS.get(type);
     if (baseCost === undefined) return 0;
 

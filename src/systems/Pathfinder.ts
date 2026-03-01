@@ -12,6 +12,7 @@ interface PathNode {
   f: number;
   parent: PathNode | null;
   direction: Direction | null;
+  depth: number;
 }
 
 // Simple binary min-heap
@@ -79,7 +80,8 @@ export class Pathfinder {
     const closed = new Set<string>();
     const MAX_OPEN = 10000;
     const MAX_PATH = 200;
-    const minCost = 50; // minimum possible tile cost (Rail on Grassland)
+    // Minimum possible tile cost for heuristic (Rail on Grassland=50, Elevated on Grassland=100)
+    const minCost = type === InfrastructureType.ElevatedRail ? 100 : 50;
 
     // Start with all 8 directions
     for (const dir of ALL_DIRECTIONS) {
@@ -92,7 +94,7 @@ export class Pathfinder {
       if (existingInfra.hasAt(nx, ny)) continue;
 
       const h = Pathfinder.heuristic(nx, ny, ex, ey) * minCost;
-      open.push({ x: nx, y: ny, g: cost, h, f: cost + h, parent: { x: sx, y: sy, g: 0, h: 0, f: 0, parent: null, direction: null }, direction: dir });
+      open.push({ x: nx, y: ny, g: cost, h, f: cost + h, parent: { x: sx, y: sy, g: 0, h: 0, f: 0, parent: null, direction: null, depth: 1 }, direction: dir, depth: 2 });
     }
 
     while (open.size > 0) {
@@ -108,11 +110,8 @@ export class Pathfinder {
         return Pathfinder.reconstructPath(current);
       }
 
-      // Check path length
-      let pathLen = 0;
-      let node: PathNode | null = current;
-      while (node) { pathLen++; node = node.parent; }
-      if (pathLen > MAX_PATH) continue;
+      // Check path length (O(1) with cached depth)
+      if (current.depth > MAX_PATH) continue;
 
       // Expand neighbors (only valid directions based on 45-degree rule)
       const validDirs = Pathfinder.getValidDirections(current.direction);
@@ -133,7 +132,7 @@ export class Pathfinder {
 
         const g = current.g + cost;
         const h = Pathfinder.heuristic(nx, ny, ex, ey) * minCost;
-        open.push({ x: nx, y: ny, g, h, f: g + h, parent: current, direction: dir });
+        open.push({ x: nx, y: ny, g, h, f: g + h, parent: current, direction: dir, depth: current.depth + 1 });
       }
     }
 

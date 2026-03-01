@@ -24,11 +24,17 @@ export class GhostPreviewManager {
 
   /** Get a rectangle from the pool or create a new one. */
   private acquire(): Phaser.GameObjects.Rectangle {
-    let rect: Phaser.GameObjects.Rectangle;
-    if (this.pool.length > 0) {
-      rect = this.pool.pop()!;
-      rect.setVisible(true);
-    } else {
+    let rect: Phaser.GameObjects.Rectangle | undefined;
+    // Try to reuse from pool, skipping any externally destroyed objects
+    while (this.pool.length > 0) {
+      const candidate = this.pool.pop()!;
+      if (candidate.scene) {
+        candidate.setVisible(true);
+        rect = candidate;
+        break;
+      }
+    }
+    if (!rect) {
       rect = this.scene.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE);
       rect.setOrigin(0, 0);
       rect.setDepth(GHOST_DEPTH);

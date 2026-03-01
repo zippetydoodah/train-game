@@ -9,19 +9,19 @@ const TOOLBAR_HEIGHT = 48;
 const TOOLBAR_Y = GAME_HEIGHT - TOOLBAR_HEIGHT;
 
 const TOOL_BUTTONS = [
-  { label: 'Rail', width: 72 },
-  { label: 'Station', width: 72 },
-  { label: 'Bridge', width: 72 },
-  { label: 'Elev.Rail', width: 72 },
-  { label: 'Demolish', width: 72 },
+  { label: 'Rail [R]', width: 72 },
+  { label: 'Stn [T]', width: 72 },
+  { label: 'Brg [B]', width: 72 },
+  { label: 'Elev [E]', width: 72 },
+  { label: 'Demo [X]', width: 72 },
 ];
 
 const BUTTON_LABEL_TO_TOOL_LOCAL: ReadonlyMap<string, ToolType> = new Map([
-  ['Rail',      ToolType.Rail],
-  ['Station',   ToolType.Station],
-  ['Bridge',    ToolType.Bridge],
-  ['Elev.Rail', ToolType.ElevatedRail],
-  ['Demolish',  ToolType.Demolish],
+  ['Rail [R]',  ToolType.Rail],
+  ['Stn [T]',   ToolType.Station],
+  ['Brg [B]',   ToolType.Bridge],
+  ['Elev [E]',  ToolType.ElevatedRail],
+  ['Demo [X]',  ToolType.Demolish],
 ]);
 
 export class Toolbar {

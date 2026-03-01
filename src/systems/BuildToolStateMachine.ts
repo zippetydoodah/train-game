@@ -71,7 +71,7 @@ export class BuildToolStateMachine {
         this.setPhase(BuildPhase.StationSubMenu);
         break;
       case ToolType.Bridge:
-        this.setPhase(BuildPhase.BridgeStart);
+        this.setPhase(BuildPhase.ToolActive);
         break;
       case ToolType.None:
         this.setPhase(BuildPhase.Idle);
@@ -99,9 +99,15 @@ export class BuildToolStateMachine {
     this.setPhase(BuildPhase.ToolActive);
   }
 
-  /** Set the bridge start tile. */
+  /** Set the bridge start tile. Transitions to BridgeStart (awaiting second bank). */
   setBridgeStart(x: number, y: number): void {
     this._bridgeStartTile = { x, y };
+    this.setPhase(BuildPhase.BridgeStart);
+  }
+
+  /** Reset bridge state after completing or cancelling a bridge placement. */
+  resetBridgeState(): void {
+    this._bridgeStartTile = null;
     this.setPhase(BuildPhase.ToolActive);
   }
 

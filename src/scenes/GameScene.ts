@@ -52,7 +52,8 @@ export class GameScene extends Phaser.Scene {
   public treasuryManager!: TreasuryManager;
   public buildTool!: BuildToolStateMachine;
   private ghostPreview!: GhostPreviewManager;
-  private infraSprites: Map<string, Phaser.GameObjects.Image> = new Map();
+  private infraBlitter!: Phaser.GameObjects.Blitter | null;
+  private infraBobs: Map<string, Phaser.GameObjects.Bob> = new Map();
 
   constructor() {
     super({ key: 'game' });
@@ -140,12 +141,24 @@ export class GameScene extends Phaser.Scene {
       this.timeSystem.setSpeed(data.saveData.speed);
     }
 
+    // Clean up previous infrastructure state (re-create from save load)
+    if (this.infraBlitter) {
+      this.infraBlitter.destroy();
+      this.infraBlitter = null;
+    }
+    this.infraBobs.clear();
+    if (this.ghostPreview) {
+      this.ghostPreview.destroy();
+    }
+
     // Initialize infrastructure systems
     this.infrastructureManager = new InfrastructureManager();
     this.treasuryManager = new TreasuryManager(STARTING_TREASURY);
     this.buildTool = new BuildToolStateMachine();
     this.ghostPreview = new GhostPreviewManager(this);
-    this.infraSprites = new Map();
+    this.infraBlitter = this.add.blitter(0, 0, 'infra-tileset');
+    this.infraBlitter.setDepth(5);
+    this.infraBobs = new Map();
 
     // Disable context menu for right-click panning
     this.input.mouse?.disableContextMenu();
@@ -450,6 +463,10 @@ export class GameScene extends Phaser.Scene {
     const cost = CostCalculator.tileCost(infraType, this.terrain[tile.y][tile.x]);
     if (cost < 0) return;
 
+    // Debt warning (FR-TREASURY-4)
+    if (this.treasuryManager.wouldEnterDebt(cost)) {
+      this.events.emit('debt-warning');
+    }
     this.treasuryManager.debit(cost);
     const infraTile: InfrastructureTile = {
       type: infraType,
@@ -488,7 +505,7 @@ export class GameScene extends Phaser.Scene {
       const endTerrain = this.terrain[tile.y][tile.x];
       if (endTerrain === TerrainType.DeepWater || endTerrain === TerrainType.ShallowWater) return;
       this.buildBridgeSpan(start, tile);
-      this.buildTool.endDrag();
+      this.buildTool.resetBridgeState();
     }
   }
 
@@ -521,6 +538,10 @@ export class GameScene extends Phaser.Scene {
 
     if (tilesToPlace.length === 0) return;
 
+    // Debt warning (FR-TREASURY-4)
+    if (this.treasuryManager.wouldEnterDebt(totalCost)) {
+      this.events.emit('debt-warning');
+    }
     this.treasuryManager.debit(totalCost);
 
     for (const pos of tilesToPlace) {
@@ -559,7 +580,7 @@ export class GameScene extends Phaser.Scene {
 
     // Validate all cells
     for (const cell of cells) {
-      if (cell.x >= MAP_WIDTH || cell.y >= MAP_HEIGHT) return;
+      if (cell.x < 0 || cell.x >= MAP_WIDTH || cell.y < 0 || cell.y >= MAP_HEIGHT) return;
       const validation = this.infrastructureManager.canPlace(tier.type, cell.x, cell.y, this.terrain, cells);
       if (!validation.valid) return;
     }
@@ -579,6 +600,10 @@ export class GameScene extends Phaser.Scene {
     });
     if (!adjacentToRail) return;
 
+    // Debt warning (FR-TREASURY-4)
+    if (this.treasuryManager.wouldEnterDebt(tier.cost)) {
+      this.events.emit('debt-warning');
+    }
     this.treasuryManager.debit(tier.cost);
 
     const groupId = `station-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -723,7 +748,7 @@ export class GameScene extends Phaser.Scene {
             cells.push({ x: tile.x + dx, y: tile.y + dy });
           }
         }
-        const allValid = cells.every(c => c.x < MAP_WIDTH && c.y < MAP_HEIGHT && this.infrastructureManager.canPlace(tier.type, c.x, c.y, this.terrain, cells).valid);
+        const allValid = cells.every(c => c.x >= 0 && c.x < MAP_WIDTH && c.y >= 0 && c.y < MAP_HEIGHT && this.infrastructureManager.canPlace(tier.type, c.x, c.y, this.terrain, cells).valid);
         this.ghostPreview.showMultiTile(cells, allValid);
         this.events.emit('cost-tooltip', {
           screenX: pointer.x, screenY: pointer.y,
@@ -743,17 +768,23 @@ export class GameScene extends Phaser.Scene {
               const minX = Math.min(start.x, tile.x);
               const maxX = Math.max(start.x, tile.x);
               for (let x = minX + 1; x < maxX; x++) {
-                tiles.push({ x, y: start.y, valid: true });
+                const t = this.terrain[start.y][x];
+                const isWater = t === TerrainType.DeepWater || t === TerrainType.ShallowWater;
+                tiles.push({ x, y: start.y, valid: isWater });
               }
             } else {
               const minY = Math.min(start.y, tile.y);
               const maxY = Math.max(start.y, tile.y);
               for (let y = minY + 1; y < maxY; y++) {
-                tiles.push({ x: start.x, y, valid: true });
+                const t = this.terrain[y][start.x];
+                const isWater = t === TerrainType.DeepWater || t === TerrainType.ShallowWater;
+                tiles.push({ x: start.x, y, valid: isWater });
               }
             }
             this.ghostPreview.showBridge(tiles);
-            const totalCost = tiles.length * 200;
+            // Use CostCalculator for bridge cost (flat 200/tile per FR-COST-3)
+            const bridgeCostPerTile = CostCalculator.tileCost(InfrastructureType.Bridge, TerrainType.DeepWater);
+            const totalCost = tiles.length * bridgeCostPerTile;
             this.events.emit('cost-tooltip', {
               screenX: pointer.x, screenY: pointer.y,
               label: `\u00A3${totalCost} (${tiles.length} spans)`,
@@ -776,13 +807,41 @@ export class GameScene extends Phaser.Scene {
       case ToolType.Demolish: {
         const existing = this.infrastructureManager.getAt(tile.x, tile.y);
         if (existing) {
+          // Check station demolish blocked by adjacent rail (FR-DEMOLISH-5)
+          if (existing.groupId) {
+            const groupTiles = this.infrastructureManager.getStationGroup(existing.groupId);
+            const hasAdjacentRail = groupTiles.some(gt => {
+              const neighbors = [
+                { x: gt.x, y: gt.y - 1 }, { x: gt.x + 1, y: gt.y },
+                { x: gt.x, y: gt.y + 1 }, { x: gt.x - 1, y: gt.y },
+              ];
+              return neighbors.some(n => {
+                const adj = this.infrastructureManager.getAt(n.x, n.y);
+                return adj && !adj.groupId && (adj.type === InfrastructureType.Rail || adj.type === InfrastructureType.ElevatedRail);
+              });
+            });
+            if (hasAdjacentRail) {
+              this.ghostPreview.showSingle(tile.x, tile.y, false);
+              this.events.emit('cost-tooltip', {
+                screenX: pointer.x, screenY: pointer.y,
+                label: 'Cannot demolish: remove rail first',
+                affordable: false,
+              });
+              break;
+            }
+          }
+
           const refund = CostCalculator.demolishRefund(existing, this.timeSystem.getElapsedMinutes());
+          const percent = existing.buildCost > 0
+            ? Math.floor((refund / existing.buildCost) * 100)
+            : 0;
           this.ghostPreview.showSingle(tile.x, tile.y, true);
           this.events.emit('cost-tooltip', {
             screenX: pointer.x, screenY: pointer.y,
-            label: `Refund: \u00A3${refund}`,
+            label: `Demolish? Refund: \u00A3${refund} (${percent}%)`,
             affordable: true,
           });
+          this.events.emit('demolish-preview', { refund, buildCost: existing.buildCost });
         } else {
           this.ghostPreview.showSingle(tile.x, tile.y, false);
           this.events.emit('cost-tooltip', null);
@@ -798,8 +857,21 @@ export class GameScene extends Phaser.Scene {
     const path = Pathfinder.findPath(start.x, start.y, end.x, end.y, infraType, this.terrain, this.infrastructureManager);
     if (!path) return;
 
-    const routeCost = CostCalculator.routeCost(infraType, path, this.terrain);
-    this.treasuryManager.debit(routeCost.totalCost);
+    // Only charge for tiles that will actually be placed (skip existing infrastructure)
+    let actualCost = 0;
+    for (const p of path) {
+      if (this.infrastructureManager.hasAt(p.x, p.y)) continue;
+      const cost = CostCalculator.tileCost(infraType, this.terrain[p.y][p.x]);
+      if (cost < 0) continue;
+      actualCost += cost;
+    }
+    if (actualCost === 0) return;
+
+    // Debt warning (FR-TREASURY-4)
+    if (this.treasuryManager.wouldEnterDebt(actualCost)) {
+      this.events.emit('debt-warning');
+    }
+    this.treasuryManager.debit(actualCost);
 
     for (const p of path) {
       if (this.infrastructureManager.hasAt(p.x, p.y)) continue;
@@ -833,19 +905,15 @@ export class GameScene extends Phaser.Scene {
 
   private renderInfrastructureTile(tile: InfrastructureTile): void {
     const key = `${tile.x},${tile.y}`;
-    // Remove existing sprite if any
-    const existing = this.infraSprites.get(key);
+    // Remove existing bob if any
+    const existing = this.infraBobs.get(key);
     if (existing) existing.destroy();
 
-    const sprite = this.add.image(tile.x * TILE_SIZE, tile.y * TILE_SIZE, 'infra-tileset', tile.spriteIndex);
-    sprite.setOrigin(0, 0);
-    sprite.setDepth(5);
-
-    if (tile.type === InfrastructureType.ElevatedRail) {
-      sprite.setY(tile.y * TILE_SIZE - 2);
-    }
-
-    this.infraSprites.set(key, sprite);
+    const yPos = tile.type === InfrastructureType.ElevatedRail
+      ? tile.y * TILE_SIZE - 2
+      : tile.y * TILE_SIZE;
+    const bob = this.infraBlitter!.create(tile.x * TILE_SIZE, yPos, tile.spriteIndex);
+    this.infraBobs.set(key, bob);
   }
 
   private renderAllInfrastructure(): void {
@@ -856,10 +924,10 @@ export class GameScene extends Phaser.Scene {
 
   private removeInfrastructureSprite(x: number, y: number): void {
     const key = `${x},${y}`;
-    const sprite = this.infraSprites.get(key);
-    if (sprite) {
-      sprite.destroy();
-      this.infraSprites.delete(key);
+    const bob = this.infraBobs.get(key);
+    if (bob) {
+      bob.destroy();
+      this.infraBobs.delete(key);
     }
   }
 }

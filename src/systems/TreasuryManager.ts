@@ -17,8 +17,19 @@ export class TreasuryManager {
    * Returns the new balance.
    */
   debit(amount: number): number {
+    if (amount < 0) {
+      console.warn('TreasuryManager.debit called with negative amount:', amount);
+      return this.balance;
+    }
     this.balance -= amount;
     return this.balance;
+  }
+
+  /**
+   * Check if debiting this amount would cross from positive to negative balance.
+   */
+  wouldEnterDebt(amount: number): boolean {
+    return this.balance >= 0 && (this.balance - amount) < 0;
   }
 
   /**
@@ -26,6 +37,10 @@ export class TreasuryManager {
    * Returns the new balance.
    */
   credit(amount: number): number {
+    if (amount < 0) {
+      console.warn('TreasuryManager.credit called with negative amount:', amount);
+      return this.balance;
+    }
     this.balance += amount;
     return this.balance;
   }

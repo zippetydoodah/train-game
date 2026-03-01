@@ -64,6 +64,32 @@ export class TreasuryPanel {
     });
   }
 
+  /** Amber flash warning before entering debt (FR-TREASURY-4): 3 pulses over 600ms. */
+  flashDebtWarning(): void {
+    let pulses = 0;
+    const flashTimer = this.scene.time.addEvent({
+      delay: 200,
+      repeat: 5, // 6 callbacks: 3 on, 3 off
+      callback: () => {
+        pulses++;
+        if (pulses % 2 === 1) {
+          this.bg.clear();
+          this.bg.fillStyle(UI.PANEL_BG, 0.85);
+          this.bg.fillRect(this.x, this.y, this.currentWidth, 36);
+          this.bg.lineStyle(2, TEXT.WARNING, 1);
+          this.bg.strokeRect(this.x, this.y, this.currentWidth, 36);
+        } else {
+          this.drawPanel(this.currentWidth);
+        }
+      },
+    });
+    // Ensure cleanup after all pulses
+    this.scene.time.delayedCall(1200, () => {
+      flashTimer.destroy();
+      this.drawPanel(this.currentWidth);
+    });
+  }
+
   private drawPanel(width: number): void {
     this.bg.clear();
     this.bg.fillStyle(UI.PANEL_BG, 0.85);

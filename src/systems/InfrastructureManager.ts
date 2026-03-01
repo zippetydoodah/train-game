@@ -274,6 +274,14 @@ export class InfrastructureManager {
       neighbor.spriteIndex = InfrastructureManager.getSpriteIndex(neighbor.type, neighbor.connections);
     }
 
+    // Clamp: if more than 2 connections and not a valid crossing (4 cardinal bits),
+    // keep only the first 2 bits found. T-junctions are not supported in Phase 2.
+    const bitCount = InfrastructureManager.popcount(connections);
+    if (bitCount === 3) {
+      // Remove the lowest set bit to reduce to 2 connections
+      connections &= connections - 1;
+    }
+
     tile.connections = connections;
     tile.spriteIndex = InfrastructureManager.getSpriteIndex(tile.type, tile.connections);
   }
@@ -343,6 +351,10 @@ export class InfrastructureManager {
   fromCompact(data: InfrastructureTileCompact[]): void {
     this.clear();
     for (const compact of data) {
+      if (compact.length < 7) {
+        console.warn('Skipping malformed infrastructure tile data:', compact);
+        continue;
+      }
       const tile: InfrastructureTile = {
         type: indexToType(compact[0]),
         x: compact[1],

@@ -118,5 +118,8 @@ export function typeToIndex(type: InfrastructureType): number {
 
 /** Convert numeric index back to InfrastructureType. */
 export function indexToType(index: number): InfrastructureType {
+  if (index < 0 || index >= INFRA_TYPE_VALUES.length) {
+    throw new RangeError(`Invalid infrastructure type index: ${index}`);
+  }
   return INFRA_TYPE_VALUES[index];
 }

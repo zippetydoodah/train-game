@@ -30,6 +30,8 @@ export class HUDScene extends Phaser.Scene {
   private onDemolishCompleted!: () => void;
   private onRoutePreview!: (data: unknown) => void;
   private onCostTooltip!: (data: unknown) => void;
+  private onDebtWarning!: () => void;
+  private onDemolishPreview!: (data: unknown) => void;
 
   constructor() {
     super({ key: 'hud' });
@@ -119,6 +121,21 @@ export class HUDScene extends Phaser.Scene {
       }
     };
 
+    // Debt warning (FR-TREASURY-4)
+    this.onDebtWarning = () => {
+      this.treasuryPanel.flashDebtWarning();
+    };
+
+    // Demolish preview for side panel
+    this.onDemolishPreview = (previewData: unknown) => {
+      if (previewData && typeof previewData === 'object' && 'refund' in previewData) {
+        const d = previewData as { refund: number; buildCost: number };
+        this.sidePanel.showDemolishInfo(d.refund, d.buildCost);
+      } else {
+        this.sidePanel.clearContent();
+      }
+    };
+
     // Store bound handler references
     this.onSaveRequested = () => this.openSaveMenu();
     this.onEscapePressed = () => this.handleEscape();
@@ -133,6 +150,8 @@ export class HUDScene extends Phaser.Scene {
     this.gameScene.events.on('demolish-completed', this.onDemolishCompleted);
     this.gameScene.events.on('route-preview', this.onRoutePreview);
     this.gameScene.events.on('cost-tooltip', this.onCostTooltip);
+    this.gameScene.events.on('debt-warning', this.onDebtWarning);
+    this.gameScene.events.on('demolish-preview', this.onDemolishPreview);
 
     // Clean up on shutdown
     this.events.on('shutdown', () => {
@@ -145,6 +164,8 @@ export class HUDScene extends Phaser.Scene {
       this.gameScene.events.off('demolish-completed', this.onDemolishCompleted);
       this.gameScene.events.off('route-preview', this.onRoutePreview);
       this.gameScene.events.off('cost-tooltip', this.onCostTooltip);
+      this.gameScene.events.off('debt-warning', this.onDebtWarning);
+      this.gameScene.events.off('demolish-preview', this.onDemolishPreview);
       if (this.saveMenu) {
         this.saveMenu.close();
         this.saveMenu = null;
