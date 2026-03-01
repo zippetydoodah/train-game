@@ -1,0 +1,30 @@
+{
+  "name": "train-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zippetydoodah/train-game.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zippetydoodah/train-game/issues"
+  },
+  "homepage": "https://github.com/zippetydoodah/train-game#readme",
+  "dependencies": {
+    "phaser": "^3.90.0",
+    "simplex-noise": "^4.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}

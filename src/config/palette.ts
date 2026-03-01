@@ -1,0 +1,53 @@
+export const UI = {
+  PANEL_BG:           0x1A1A2E,
+  PANEL_BG_ALT:       0x16213E,
+  PANEL_BORDER:       0x0F3460,
+  PANEL_BORDER_ACCENT:0x533E2D,
+  BUTTON_DEFAULT:     0x2A2A4A,
+  BUTTON_HOVER:       0x3A3A5A,
+  BUTTON_ACTIVE:      0x1A1A3A,
+  BUTTON_DISABLED:    0x222238,
+  TOOLBAR_BG:         0x12122A,
+  OVERLAY_SCRIM:      0x000000,
+  MENU_BG:            0x0A0A1A,
+  BUTTON_DISABLED_BORDER: 0x2A2A3A,
+  DANGER_BG:          0x5A1A1A,
+  DANGER_BORDER:      0x802020,
+  DANGER_HOVER_BG:    0x6A2A2A,
+  ACTIVE_BUTTON_BG:   0x2D5A1E,
+  ACTIVE_BUTTON_BORDER: 0x4A7A3A,
+  INPUT_BG:           0x0A0A1A,
+  INPUT_BORDER:       0x0F3460,
+  INPUT_FOCUS_BORDER: 0x533E2D,
+} as const;
+
+export const TEXT = {
+  PRIMARY:            0xE8D5B7,
+  SECONDARY:          0xA89880,
+  DISABLED:           0x5A5068,
+  ACCENT:             0xE2B755,
+  TITLE:              0xF0E6D0,
+  DANGER:             0xC0392B,
+  SUCCESS:            0x27AE60,
+  DANGER_HOVER:       0xE04040,
+} as const;
+
+export const TERRAIN = {
+  DEEP_WATER:         0x1A3C5E,
+  SHALLOW_WATER:      0x2E6B8A,
+  SAND:               0xC4A968,
+  GRASSLAND:          0x5B8C3E,
+  FOREST:             0x2D5A1E,
+  HILLS:              0x7A9055,
+  MOUNTAINS:          0x8A8078,
+} as const;
+
+export const TERRAIN_COLORS = [
+  TERRAIN.DEEP_WATER,
+  TERRAIN.SHALLOW_WATER,
+  TERRAIN.SAND,
+  TERRAIN.GRASSLAND,
+  TERRAIN.FOREST,
+  TERRAIN.HILLS,
+  TERRAIN.MOUNTAINS,
+] as const;
