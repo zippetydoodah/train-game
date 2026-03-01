@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/game-config';
+import { TilesetGenerator } from '../systems/TilesetGenerator';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -17,6 +18,9 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     // Generate bitmap font from canvas
     this.generateBitmapFont();
+
+    // Generate terrain tileset texture
+    TilesetGenerator.generate(this);
 
     // Transition to main menu
     this.scene.start('main-menu');
