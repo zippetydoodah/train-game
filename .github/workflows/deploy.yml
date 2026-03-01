@@ -37,33 +37,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Install Node.js 22 (LTS) with npm dependency caching
+      # Step 2: Install pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      # Step 3: Install Node.js 22 (LTS) with pnpm dependency caching
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache: 'pnpm'
 
-      # Step 3: Install dependencies deterministically from the lockfile
+      # Step 4: Install dependencies deterministically from the lockfile
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
-      # Step 4: Run ESLint to catch code quality issues before building
+      # Step 5: Run ESLint to catch code quality issues before building
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
-      # Step 5: Run the full production build (tsc type-check + vite build)
+      # Step 6: Run the full production build (tsc type-check + vite build)
       # If tsc or vite exits non-zero, this step fails and the deploy job
       # is skipped entirely (fail-fast).
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
-      # Step 6: Configure GitHub Pages (reads repo Pages settings)
+      # Step 7: Configure GitHub Pages (reads repo Pages settings)
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      # Step 7: Upload the dist/ directory as a Pages artifact
+      # Step 8: Upload the dist/ directory as a Pages artifact
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
