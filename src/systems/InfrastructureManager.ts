@@ -7,7 +7,6 @@ import {
   InfrastructureTile,
   typeToIndex,
   indexToType,
-  STATION_TIERS,
 } from '../types/infrastructure';
 import { MAP_WIDTH, MAP_HEIGHT } from '../config/game-config';
 import { InfrastructureTileCompact } from '../types/save';

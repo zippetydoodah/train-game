@@ -21,6 +21,7 @@ export class Button {
   private state: ButtonState;
   private onClick?: () => void;
   private isDanger: boolean;
+  private isToolActive: boolean = false;
   private tooltip: Phaser.GameObjects.BitmapText | null = null;
   private tooltipBg: Phaser.GameObjects.Graphics | null = null;
   private hoverTimer: Phaser.Time.TimerEvent | null = null;
@@ -57,6 +58,7 @@ export class Button {
     this.bg.setInteractive({ useHandCursor: this.state !== ButtonState.Disabled });
 
     this.bg.on('pointerover', () => {
+      if (this.isToolActive) return;
       if (this.state === ButtonState.Disabled) {
         this.startHoverTimer();
         return;
@@ -66,6 +68,7 @@ export class Button {
     });
 
     this.bg.on('pointerout', () => {
+      if (this.isToolActive) return;
       if (this.state === ButtonState.Disabled) {
         this.clearHoverTimer();
         this.hideTooltip();
@@ -181,13 +184,38 @@ export class Button {
 
   setActive(active: boolean): void {
     if (active) {
-      this.bg.setFillStyle(UI.ACTIVE_BUTTON_BG);
-      this.border.setStrokeStyle(1, UI.ACTIVE_BUTTON_BORDER);
-      this.text.setTint(TEXT.PRIMARY);
+      this.isToolActive = true;
+      if (this.isDanger) {
+        this.bg.setFillStyle(UI.DANGER_BG);
+        this.border.setStrokeStyle(1, UI.DANGER_BORDER);
+        this.text.setTint(TEXT.DANGER);
+      } else {
+        this.bg.setFillStyle(UI.ACTIVE_BUTTON_BG);
+        this.border.setStrokeStyle(1, UI.ACTIVE_BUTTON_BORDER);
+        this.text.setTint(TEXT.PRIMARY);
+      }
     } else {
+      this.isToolActive = false;
       this.state = ButtonState.Normal;
       this.applyStyle();
     }
+  }
+
+  setEnabled(enabled: boolean): void {
+    if (enabled) {
+      this.state = ButtonState.Normal;
+      this.bg.setInteractive({ useHandCursor: true });
+    } else {
+      this.state = ButtonState.Disabled;
+      this.bg.setInteractive({ useHandCursor: false });
+    }
+    this.applyStyle();
+  }
+
+  setVisible(visible: boolean): void {
+    this.bg.setVisible(visible);
+    this.border.setVisible(visible);
+    this.text.setVisible(visible);
   }
 
   destroy(): void {
