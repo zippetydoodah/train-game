@@ -1,0 +1,84 @@
+name: Deploy to GitHub Pages
+
+# --- Trigger ---
+# Runs on pushes to the main branch or manual dispatch.
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# --- Permissions ---
+# Required for the official GitHub Pages deployment actions.
+# - pages:write    -> create/update a Pages deployment
+# - id-token:write -> verify the deployment originated from this repo
+# - contents:read  -> check out the repository
+permissions:
+  pages: write
+  id-token: write
+  contents: read
+
+# --- Concurrency ---
+# If a new push to main occurs while a previous deployment is still running,
+# cancel the in-progress run. This prevents wasted CI minutes and ensures
+# only the latest commit is deployed. The "allow-in-progress" group name
+# is arbitrary; what matters is that all runs of this workflow share the
+# same group so they can preempt each other.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  # ===== Job 1: Build =====
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install Node.js 22 (LTS) with npm dependency caching
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      # Step 3: Install dependencies deterministically from the lockfile
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Run ESLint to catch code quality issues before building
+      - name: Lint
+        run: npm run lint
+
+      # Step 5: Run the full production build (tsc type-check + vite build)
+      # If tsc or vite exits non-zero, this step fails and the deploy job
+      # is skipped entirely (fail-fast).
+      - name: Build
+        run: npm run build
+
+      # Step 6: Configure GitHub Pages (reads repo Pages settings)
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # Step 7: Upload the dist/ directory as a Pages artifact
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # ===== Job 2: Deploy =====
+  # Runs only if the build job succeeds.
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Step 1: Deploy the uploaded artifact to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
