@@ -694,16 +694,23 @@ export class GameScene extends Phaser.Scene {
         const infraType = tool === ToolType.Rail ? InfrastructureType.Rail : InfrastructureType.ElevatedRail;
         const path = Pathfinder.findPath(startTile.x, startTile.y, tile.x, tile.y, infraType, this.terrain, this.infrastructureManager);
         if (path) {
-          const routeCost = CostCalculator.routeCost(infraType, path, this.terrain);
+          // Compute cost only for tiles that will actually be placed (skip existing)
+          let previewCost = 0;
+          let newTiles = 0;
+          for (const p of path) {
+            if (this.infrastructureManager.hasAt(p.x, p.y)) continue;
+            const c = CostCalculator.tileCost(infraType, this.terrain[p.y][p.x]);
+            if (c > 0) { previewCost += c; newTiles++; }
+          }
           this.ghostPreview.showRoute(path.map(p => ({
             x: p.x, y: p.y,
             valid: CostCalculator.tileCost(infraType, this.terrain[p.y][p.x]) >= 0,
           })));
-          this.events.emit('route-preview', routeCost);
-          const affordable = this.treasuryManager.getBalance() - routeCost.totalCost >= -999999;
+          this.events.emit('route-preview', { totalCost: previewCost, perTile: [] });
+          const affordable = this.treasuryManager.getBalance() - previewCost >= -999999;
           this.events.emit('cost-tooltip', {
             screenX: pointer.x, screenY: pointer.y,
-            label: `\u00A3${routeCost.totalCost.toLocaleString('en-GB')} (${path.length} tiles)`,
+            label: `\u00A3${previewCost.toLocaleString('en-GB')} (${newTiles} tiles)`,
             affordable,
           });
         } else {
@@ -781,15 +788,20 @@ export class GameScene extends Phaser.Scene {
                 tiles.push({ x: start.x, y, valid: isWater });
               }
             }
-            this.ghostPreview.showBridge(tiles);
-            // Use CostCalculator for bridge cost (flat 200/tile per FR-COST-3)
-            const bridgeCostPerTile = CostCalculator.tileCost(InfrastructureType.Bridge, TerrainType.DeepWater);
-            const totalCost = tiles.length * bridgeCostPerTile;
-            this.events.emit('cost-tooltip', {
-              screenX: pointer.x, screenY: pointer.y,
-              label: `\u00A3${totalCost} (${tiles.length} spans)`,
-              affordable: true,
-            });
+            if (tiles.length === 0) {
+              this.ghostPreview.clearAll();
+              this.events.emit('cost-tooltip', null);
+            } else {
+              this.ghostPreview.showBridge(tiles);
+              // Use CostCalculator for bridge cost (flat 200/tile per FR-COST-3)
+              const bridgeCostPerTile = CostCalculator.tileCost(InfrastructureType.Bridge, TerrainType.DeepWater);
+              const totalCost = tiles.length * bridgeCostPerTile;
+              this.events.emit('cost-tooltip', {
+                screenX: pointer.x, screenY: pointer.y,
+                label: `\u00A3${totalCost} (${tiles.length} spans)`,
+                affordable: true,
+              });
+            }
           }
         } else {
           // Show single tile ghost for bank selection

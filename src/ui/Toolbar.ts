@@ -9,11 +9,11 @@ const TOOLBAR_HEIGHT = 48;
 const TOOLBAR_Y = GAME_HEIGHT - TOOLBAR_HEIGHT;
 
 const TOOL_BUTTONS = [
-  { label: 'Rail [R]', width: 72 },
-  { label: 'Stn [T]', width: 72 },
-  { label: 'Brg [B]', width: 72 },
-  { label: 'Elev [E]', width: 72 },
-  { label: 'Demo [X]', width: 72 },
+  { label: 'Rail [R]', width: 72, tooltip: 'Rail -- from 50/tile' },
+  { label: 'Stn [T]', width: 72, tooltip: 'Station -- select tier' },
+  { label: 'Brg [B]', width: 72, tooltip: 'Bridge -- 200/tile' },
+  { label: 'Elev [E]', width: 72, tooltip: 'Elevated -- from 100/tile' },
+  { label: 'Demo [X]', width: 72, tooltip: 'Demolish -- partial refund' },
 ];
 
 const BUTTON_LABEL_TO_TOOL_LOCAL: ReadonlyMap<string, ToolType> = new Map([
@@ -49,6 +49,7 @@ export class Toolbar {
         label: def.label,
         state: ButtonState.Normal,
         isDanger: toolType === ToolType.Demolish,
+        hoverTooltipText: def.tooltip,
         onClick: () => {
           scene.events.emit('tool-selected', toolType);
         },
