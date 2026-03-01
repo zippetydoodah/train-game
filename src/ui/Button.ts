@@ -12,6 +12,8 @@ interface ButtonConfig {
   onClick?: () => void;
   isDanger?: boolean;
   disabledTooltip?: string;
+  /** Tooltip text shown on hover after 400ms for non-disabled buttons (FR-TOOL-5). */
+  hoverTooltipText?: string;
 }
 
 export class Button {
@@ -21,11 +23,13 @@ export class Button {
   private state: ButtonState;
   private onClick?: () => void;
   private isDanger: boolean;
+  private isToolActive: boolean = false;
   private tooltip: Phaser.GameObjects.BitmapText | null = null;
   private tooltipBg: Phaser.GameObjects.Graphics | null = null;
   private hoverTimer: Phaser.Time.TimerEvent | null = null;
   private scene: Phaser.Scene;
   private disabledTooltip: string;
+  private hoverTooltipText: string | null;
 
   constructor(scene: Phaser.Scene, config: ButtonConfig) {
     this.scene = scene;
@@ -33,6 +37,7 @@ export class Button {
     this.onClick = config.onClick;
     this.isDanger = config.isDanger ?? false;
     this.disabledTooltip = config.disabledTooltip ?? 'Available in a future update';
+    this.hoverTooltipText = config.hoverTooltipText ?? null;
 
     const cx = config.x + config.width / 2;
     const cy = config.y + config.height / 2;
@@ -57,18 +62,24 @@ export class Button {
     this.bg.setInteractive({ useHandCursor: this.state !== ButtonState.Disabled });
 
     this.bg.on('pointerover', () => {
+      if (this.isToolActive) return;
       if (this.state === ButtonState.Disabled) {
         this.startHoverTimer();
         return;
       }
       this.state = ButtonState.Hover;
       this.applyStyle();
+      // Show hover tooltip for non-disabled buttons (FR-TOOL-5)
+      if (this.hoverTooltipText) {
+        this.startHoverTimer();
+      }
     });
 
     this.bg.on('pointerout', () => {
+      if (this.isToolActive) return;
+      this.clearHoverTimer();
+      this.hideTooltip();
       if (this.state === ButtonState.Disabled) {
-        this.clearHoverTimer();
-        this.hideTooltip();
         return;
       }
       this.state = ButtonState.Normal;
@@ -137,7 +148,9 @@ export class Button {
 
   private startHoverTimer(): void {
     this.clearHoverTimer();
-    this.hoverTimer = this.scene.time.delayedCall(800, () => {
+    // FR-TOOL-5: 400ms for normal buttons, 800ms for disabled tooltips
+    const delay = this.state === ButtonState.Disabled ? 800 : 400;
+    this.hoverTimer = this.scene.time.delayedCall(delay, () => {
       this.showTooltip();
     });
   }
@@ -152,17 +165,23 @@ export class Button {
   private showTooltip(): void {
     if (this.tooltip) return;
 
+    // Choose tooltip text: hover tooltip for normal buttons, disabled tooltip for disabled
+    const tipText = this.state === ButtonState.Disabled
+      ? this.disabledTooltip
+      : (this.hoverTooltipText ?? '');
+    if (!tipText) return;
+
     const tipX = this.bg.x;
     const tipY = this.bg.y - this.bg.height / 2 - 18;
 
     this.tooltipBg = this.scene.add.graphics();
-    const textWidth = this.disabledTooltip.length * 6 + 12;
+    const textWidth = tipText.length * 6 + 12;
     this.tooltipBg.fillStyle(UI.PANEL_BG, 0.95);
     this.tooltipBg.fillRect(tipX - textWidth / 2, tipY - 4, textWidth, 16);
     this.tooltipBg.lineStyle(1, UI.PANEL_BORDER, 0.95);
     this.tooltipBg.strokeRect(tipX - textWidth / 2, tipY - 4, textWidth, 16);
 
-    this.tooltip = this.scene.add.bitmapText(tipX, tipY, 'press-start', this.disabledTooltip, 8);
+    this.tooltip = this.scene.add.bitmapText(tipX, tipY, 'press-start', tipText, 8);
     this.tooltip.setOrigin(0.5, 0);
     this.tooltip.setScale(0.75);
     this.tooltip.setTint(TEXT.SECONDARY);
@@ -181,13 +200,38 @@ export class Button {
 
   setActive(active: boolean): void {
     if (active) {
-      this.bg.setFillStyle(UI.ACTIVE_BUTTON_BG);
-      this.border.setStrokeStyle(1, UI.ACTIVE_BUTTON_BORDER);
-      this.text.setTint(TEXT.PRIMARY);
+      this.isToolActive = true;
+      if (this.isDanger) {
+        this.bg.setFillStyle(UI.DANGER_BG);
+        this.border.setStrokeStyle(1, UI.DANGER_BORDER);
+        this.text.setTint(TEXT.DANGER);
+      } else {
+        this.bg.setFillStyle(UI.ACTIVE_BUTTON_BG);
+        this.border.setStrokeStyle(1, UI.ACTIVE_BUTTON_BORDER);
+        this.text.setTint(TEXT.PRIMARY);
+      }
     } else {
+      this.isToolActive = false;
       this.state = ButtonState.Normal;
       this.applyStyle();
     }
+  }
+
+  setEnabled(enabled: boolean): void {
+    if (enabled) {
+      this.state = ButtonState.Normal;
+      this.bg.setInteractive({ useHandCursor: true });
+    } else {
+      this.state = ButtonState.Disabled;
+      this.bg.setInteractive({ useHandCursor: false });
+    }
+    this.applyStyle();
+  }
+
+  setVisible(visible: boolean): void {
+    this.bg.setVisible(visible);
+    this.border.setVisible(visible);
+    this.text.setVisible(visible);
   }
 
   destroy(): void {

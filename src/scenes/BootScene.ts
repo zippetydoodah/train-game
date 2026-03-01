@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/game-config';
 import { TilesetGenerator } from '../systems/TilesetGenerator';
+import { InfrastructureTilesetGenerator } from '../systems/InfrastructureTilesetGenerator';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -21,6 +22,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate terrain tileset texture
     TilesetGenerator.generate(this);
+
+    // Generate infrastructure tileset texture
+    InfrastructureTilesetGenerator.generate(this);
 
     // Transition to main menu
     this.scene.start('main-menu');
