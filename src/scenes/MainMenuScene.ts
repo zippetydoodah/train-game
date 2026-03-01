@@ -188,7 +188,7 @@ export class MainMenuScene extends Phaser.Scene {
     for (const slot of slots) {
       if (slot) {
         const time = new Date(slot.savedAt).getTime();
-        if (time > latestTime) {
+        if (!isNaN(time) && time > latestTime) {
           latest = slot;
           latestTime = time;
         }

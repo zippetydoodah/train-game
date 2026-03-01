@@ -34,6 +34,7 @@ export class GameScene extends Phaser.Scene {
   private prePauseSpeed: SpeedSetting = SpeedSetting.Normal;
   private detailLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private simpleLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+  private zoomTween: Phaser.Tweens.Tween | null = null;
   public timeSystem!: TimeSystem;
   public currentSeed!: number;
 
@@ -245,8 +246,14 @@ export class GameScene extends Phaser.Scene {
     const worldX = camera.scrollX + pointer.x / oldZoom;
     const worldY = camera.scrollY + pointer.y / oldZoom;
 
+    // Cancel any in-progress zoom tween to prevent stacking
+    if (this.zoomTween) {
+      this.zoomTween.stop();
+      this.zoomTween = null;
+    }
+
     // Smooth zoom tween
-    this.tweens.add({
+    this.zoomTween = this.tweens.add({
       targets: camera,
       zoom: newZoom,
       duration: 150,
@@ -259,6 +266,7 @@ export class GameScene extends Phaser.Scene {
       },
       onComplete: () => {
         this.updateLODVisibility(newZoom);
+        this.zoomTween = null;
       },
     });
   }
