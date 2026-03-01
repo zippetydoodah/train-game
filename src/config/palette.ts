@@ -30,6 +30,7 @@ export const TEXT = {
   DANGER:             0xC0392B,
   SUCCESS:            0x27AE60,
   DANGER_HOVER:       0xE04040,
+  WARNING:            0xF39C12,
 } as const;
 
 export const TERRAIN = {
@@ -40,6 +41,19 @@ export const TERRAIN = {
   FOREST:             0x2D5A1E,
   HILLS:              0x7A9055,
   MOUNTAINS:          0x8A8078,
+} as const;
+
+export const INFRASTRUCTURE = {
+  RAIL:               0x8B7355,
+  RAIL_ELEVATED:      0x6B5B45,
+  RAIL_SHADOW:        0x000000,
+  BRIDGE_WOOD:        0xA0845C,
+  BRIDGE_STONE:       0x888078,
+  STATION_HALT:       0xC4A968,
+  STATION_TOWN:       0xB8860B,
+  STATION_CITY:       0x8B0000,
+  GHOST_VALID:        0x27AE60,
+  GHOST_INVALID:      0xC0392B,
 } as const;
 
 export const TERRAIN_COLORS = [

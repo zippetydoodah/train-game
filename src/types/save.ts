@@ -9,11 +9,15 @@ export interface SaveSlotData {
   gameTimeMinutes: number;
   speed: SpeedSetting;
   savedAt: string;
+  treasuryBalance?: number;
+  infrastructure?: InfrastructureTileCompact[];
 }
 
 export interface SaveStore {
   slots: (SaveSlotData | null)[];
 }
+
+export type InfrastructureTileCompact = [number, number, number, number, number, number, number, string?];
 
 export type SlotIndex = 0 | 1 | 2 | 3 | 4;
 
